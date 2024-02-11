@@ -4,12 +4,17 @@ import "./App.css";
 import { Layer, Layers } from "./Layers";
 import SidePanel from "./SidePanel";
 import Map from "./Map";
+import Popup from "./Popup";
+import FeatureAttributes from "./FeatureAttributes";
 
 import { invoke } from "@tauri-apps/api";
 import { listen } from "@tauri-apps/api/event";
 
 function App() {
     const [files, setFiles] = React.useState<Layers>({ id: 0, layers: [] });
+    const [highlighted, setHighlighted] = React.useState<
+        { active: false } | { active: true; layerId: string; featureId: number }
+    >({ active: false });
 
     React.useEffect(() => {
         listen("create_layer", (e) => {
@@ -18,7 +23,7 @@ function App() {
                 filename: string;
                 features: { lng: number; lat: number }[];
             };
-            console.log(e.payload);
+
             setFiles((state) => ({
                 id: state.id + 1,
                 layers: [
@@ -81,6 +86,14 @@ function App() {
         invoke("delete_layer", { layerId });
     };
 
+    const handleFeatureHighlight = (layerId: string, featureId: number) => {
+        setHighlighted({ active: true, layerId, featureId });
+    };
+
+    const handleStopHighlight = () => {
+        setHighlighted({ active: false });
+    };
+
     return (
         <div style={{ width: "100vw", height: "100vh", display: "flex" }}>
             <SidePanel
@@ -91,7 +104,21 @@ function App() {
                 onColorChange={handleColorPick}
                 onDelete={handleDelete}
             />
-            <Map layers={files} />
+            <Map
+                layers={files}
+                onHighlight={handleFeatureHighlight}
+                onStopHighlight={handleStopHighlight}
+            />
+            <Popup open={highlighted.active}>
+                {highlighted.active ? (
+                    <FeatureAttributes
+                        layerId={highlighted.layerId}
+                        featureId={highlighted.featureId}
+                    />
+                ) : (
+                    <span>nothing here</span>
+                )}
+            </Popup>
         </div>
     );
 }

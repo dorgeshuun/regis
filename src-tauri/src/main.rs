@@ -37,6 +37,12 @@ struct Table {
     rows: Vec<Feature>,
 }
 
+#[derive(Clone, serde::Serialize)]
+struct Field {
+    name: String,
+    value: String,
+}
+
 #[derive(Serialize)]
 pub(crate) struct LayerState {
     layers: HashMap<String, Vec<Vec<String>>>
@@ -159,6 +165,28 @@ fn delete_layer(app_handle: tauri::AppHandle, layer_id: String) {
         .remove(&layer_id);
 }
 
+#[tauri::command]
+fn get_feature_attributes(app_handle: tauri::AppHandle, layer_id: String, feature_id: usize) -> Vec<Field> {
+    let state = app_handle.try_state::<Storage>().expect("oh noes!");
+    let layers = state
+        .store
+        .lock()
+        .expect("woe is me!");
+    let table = layers
+        .get(&layer_id)
+        .expect("dang it");
+    let columns = &table.columns;
+    let attributes = &table.rows[feature_id].attributes;
+
+    return columns.iter()
+        .zip(attributes.iter())
+        .map(|x| Field{ 
+            name: x.0.to_string(), 
+            value: x.1.to_string() 
+        })
+        .collect();
+}
+
 fn main() {
     let menu_item = CustomMenuItem::new("file_import".to_string(), "Import");
     let submenu = Submenu::new("Files", Menu::new().add_item(menu_item));
@@ -179,6 +207,7 @@ fn main() {
             create_table_window,
             get_layer_attributes,
             delete_layer,
+            get_feature_attributes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

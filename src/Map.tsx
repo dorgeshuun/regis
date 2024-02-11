@@ -23,6 +23,8 @@ type Layers = {
 
 type Props = {
     layers: Layers;
+    onHighlight: (layerId: string, featureId: number) => void;
+    onStopHighlight: () => void;
 };
 
 const makeStyle = (color: string) =>
@@ -34,15 +36,20 @@ const makeStyle = (color: string) =>
         }),
     });
 
-const makeFeature = (lng: number, lat: number) => {
+const makeFeature = (
+    lng: number,
+    lat: number,
+    layerId: string,
+    featureId: number
+) => {
     const coords = fromLonLat([lng, lat]);
     const geometry = new Point(coords);
-    return new Feature({ geometry });
+    return new Feature({ geometry, layerId, featureId });
 };
 
 const makeLayer = (file: Layer) =>
-    file.points.map((p) => {
-        const f = makeFeature(p.lng, p.lat);
+    file.points.map((p, index) => {
+        const f = makeFeature(p.lng, p.lat, file.id, index);
         const style = makeStyle(file.color);
         f.setStyle(style);
         return f;
@@ -73,6 +80,14 @@ const _Map = (props: Props) => {
             layers: [osm, pointLayer],
             target: "map",
             view: new View({ center: [0, 0], zoom: 2 }),
+        });
+
+        map.on("pointermove", (e) => {
+            props.onStopHighlight();
+            map.forEachFeatureAtPixel(e.pixel, (f) => {
+                const { layerId, featureId } = f.getProperties();
+                props.onHighlight(layerId, featureId);
+            });
         });
     }, []);
 
