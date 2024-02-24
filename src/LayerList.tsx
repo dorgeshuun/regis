@@ -1,9 +1,9 @@
-import { ReactSortable } from "react-sortablejs";
-import { Layers, Layer } from "./Layers";
-
-import Color from "./Color";
 import React from "react";
+import { ReactSortable, SortableEvent } from "react-sortablejs";
+
+import { Layers, Layer } from "./Layers";
 import Visibility from "./Visibility";
+import Color from "./Color";
 
 type Props = {
     layers: Layers;
@@ -15,6 +15,8 @@ type Props = {
 };
 
 function LayerList(props: Props) {
+    const [dragging, setDragging] = React.useState(-1);
+
     const handleRightClick = (id: string) => (e: React.MouseEvent) => {
         e.preventDefault();
         props.onContextMenu(id, e.pageX, e.pageY);
@@ -32,13 +34,24 @@ function LayerList(props: Props) {
         props.onColorChange(layerId, colorId);
     };
 
+    const handleDragStart = (e: SortableEvent) => {
+        setDragging(e.oldIndex);
+    };
+
+    const handleDragEnd = () => {
+        setDragging(-1);
+    };
+
     return (
         <ReactSortable
             list={props.layers.layers}
             setList={props.onSort}
             style={{ height: "100%", width: 300 }}
+            onStart={handleDragStart}
+            onEnd={handleDragEnd}
+            animation={300}
         >
-            {props.layers.layers.map((l) => (
+            {props.layers.layers.map((l, index) => (
                 <div
                     key={l.id}
                     onContextMenu={handleRightClick(l.id)}
@@ -49,6 +62,7 @@ function LayerList(props: Props) {
                         alignItems: "center",
                         justifyContent: "space-between",
                         cursor: "default",
+                        background: dragging === index ? "gainsboro" : "none",
                     }}
                 >
                     <Visibility
