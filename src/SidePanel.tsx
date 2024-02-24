@@ -15,11 +15,13 @@ type Props = {
     onZoom: (id: string) => void;
 };
 
-type State = { open: boolean; x: number; y: number; selected: string };
-
-const initialState = { open: false, x: -1, y: -1, selected: "none" };
+type State =
+    | { open: false }
+    | { open: true; selected: string; x: number; y: number };
 
 const SidePanel = (props: Props) => {
+    const [state, setState] = React.useState<State>({ open: false });
+
     const handleZoom = (id: string) => () => {
         props.onZoom(id);
     };
@@ -32,15 +34,15 @@ const SidePanel = (props: Props) => {
         props.onDelete(id);
     };
 
-    const [state, setState] = React.useState<State>(initialState);
-
     const handleOpenMenu = (layerId: string, x: number, y: number) => {
         setState({ open: true, x, y, selected: layerId });
     };
 
     const handleCloseMenu = () => {
-        setState(initialState);
+        setState({ open: false });
     };
+
+    const selected = state.open ? state.selected : "none";
 
     return (
         <>
@@ -54,12 +56,12 @@ const SidePanel = (props: Props) => {
             />
             <Menu
                 open={state.open}
-                x={state.x}
-                y={state.y}
+                x={state.open ? state.x : -1}
+                y={state.open ? state.y : -1}
                 onCloseMenu={handleCloseMenu}
-                onZoomToLayer={handleZoom(state.selected)}
-                onOpenAttributeTable={handleOpenAttributeTable(state.selected)}
-                onDeleteLayer={handleDelete(state.selected)}
+                onZoomToLayer={handleZoom(selected)}
+                onOpenAttributeTable={handleOpenAttributeTable(selected)}
+                onDeleteLayer={handleDelete(selected)}
             />
         </>
     );
