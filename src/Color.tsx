@@ -38,6 +38,7 @@ const Color = (props: Props) => {
         <div
             ref={patchRef}
             style={{
+                margin: 5,
                 width: 20,
                 height: 20,
                 borderRadius: 5,

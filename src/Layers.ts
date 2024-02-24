@@ -1,3 +1,5 @@
+import { Extent } from "./Map";
+
 export type Point = {
     lng: number;
     lat: number;
@@ -20,6 +22,7 @@ export type Layer = {
     color: string;
     visible: boolean;
     points: Point[];
+    extent: Extent;
 };
 
 export type Layers = {

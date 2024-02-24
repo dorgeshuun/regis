@@ -3,7 +3,7 @@ import React from "react";
 import "./App.css";
 import { Layer, Layers } from "./Layers";
 import SidePanel from "./SidePanel";
-import Map from "./Map";
+import Map, { Extent } from "./Map";
 import Popup from "./Popup";
 import FeatureAttributes from "./FeatureAttributes";
 
@@ -15,16 +15,18 @@ function App() {
     const [highlighted, setHighlighted] = React.useState<
         { active: false } | { active: true; layerId: string; featureId: number }
     >({ active: false });
+    const [mapExtent, setMapExtent] = React.useState<Extent | null>(null);
 
     React.useEffect(() => {
-        listen("create_layer", (e) => {
-            const { uuid, filename, features } = e.payload as {
+        listen("create_layer", e => {
+            const { uuid, filename, features, extent } = e.payload as {
                 uuid: string;
                 filename: string;
                 features: { lng: number; lat: number }[];
+                extent: Extent;
             };
 
-            setFiles((state) => ({
+            setFiles(state => ({
                 id: state.id + 1,
                 layers: [
                     ...state.layers,
@@ -34,17 +36,20 @@ function App() {
                         color: "#e41a1c",
                         visible: true,
                         points: features,
+                        extent,
                     },
                 ],
             }));
+
+            setMapExtent(extent);
         });
     }, []);
 
     const handleListSort = (items: Layer[]) => {
-        setFiles((state) => ({
+        setFiles(state => ({
             id:
-                state.layers.map((l) => l.id).join(" ") ===
-                items.map((i) => i.id).join(" ")
+                state.layers.map(l => l.id).join(" ") ===
+                items.map(i => i.id).join(" ")
                     ? state.id
                     : state.id + 1,
             layers: items,
@@ -52,38 +57,45 @@ function App() {
     };
 
     const handleClickShow = (id: string) => {
-        setFiles((state) => ({
+        setFiles(state => ({
             id: state.id + 1,
-            layers: state.layers.map((l) =>
+            layers: state.layers.map(l =>
                 l.id === id ? { ...l, visible: true } : l
             ),
         }));
     };
 
     const handleClickHide = (id: string) => {
-        setFiles((state) => ({
+        setFiles(state => ({
             id: state.id + 1,
-            layers: state.layers.map((l) =>
+            layers: state.layers.map(l =>
                 l.id === id ? { ...l, visible: false } : l
             ),
         }));
     };
 
     const handleColorPick = (id: string, color: string) => {
-        setFiles((state) => ({
+        setFiles(state => ({
             id: state.id + 1,
-            layers: state.layers.map((l) =>
-                l.id === id ? { ...l, color } : l
-            ),
+            layers: state.layers.map(l => (l.id === id ? { ...l, color } : l)),
         }));
     };
 
     const handleDelete = (layerId: string) => {
-        setFiles((state) => ({
+        setFiles(state => ({
             id: state.id + 1,
-            layers: state.layers.filter((l) => l.id !== layerId),
+            layers: state.layers.filter(l => l.id !== layerId),
         }));
         invoke("delete_layer", { layerId });
+    };
+
+    const handleZoom = (layerId: string) => {
+        const extent = files.layers.find(lyr => lyr.id === layerId)?.extent;
+        setMapExtent(state => extent || state);
+    };
+
+    const handleChangeMapExtent = (extent: Extent) => {
+        setMapExtent(extent);
     };
 
     const handleFeatureHighlight = (layerId: string, featureId: number) => {
@@ -103,9 +115,12 @@ function App() {
                 onHide={handleClickHide}
                 onColorChange={handleColorPick}
                 onDelete={handleDelete}
+                onZoom={handleZoom}
             />
             <Map
                 layers={files}
+                extent={mapExtent}
+                onChangeExtent={handleChangeMapExtent}
                 onHighlight={handleFeatureHighlight}
                 onStopHighlight={handleStopHighlight}
             />

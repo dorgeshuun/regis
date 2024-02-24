@@ -60,11 +60,61 @@ struct Storage {
     store: Mutex<HashMap<String, Table>>,
 }
 
+struct Point {
+    lng: f32,
+    lat: f32,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct Extent {
+    west: f32,
+    south: f32,
+    east: f32,
+    north: f32,
+}
+
+impl Extent {
+    const DEFAULT: Extent = Extent {
+        west: f32::INFINITY, 
+        south: f32::INFINITY, 
+        east: f32::NEG_INFINITY, 
+        north: f32::NEG_INFINITY,
+    };
+
+    fn take(&self, point: Point) -> Extent {
+        Extent {
+            west: self.west.min(point.lng),
+            south: self.south.min(point.lat),
+            east: self.east.max(point.lng),
+            north: self.north.max(point.lat),
+        }
+    }
+}
+
+impl FromIterator<Point> for Extent {
+    fn from_iter<I: IntoIterator<Item=Point>>(iter: I) -> Self {
+        let mut extent = Extent::DEFAULT;
+
+        for point in iter {
+            extent = extent.take(point);
+        }
+
+        extent
+    }
+}
+
+impl std::fmt::Display for Extent {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} {} {} {}", self.west, self.south, self.east, self.north)
+    }
+}
+
 #[derive(Clone, serde::Serialize)]
 struct InitialPayload {
     uuid: String,
     filename: String,
     features: Vec<Feature>,
+    extent: Extent,
 }
 
 #[tauri::command]
@@ -103,6 +153,50 @@ async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String) ->
     return result;
 }
 
+fn get_columns(text: &String) -> Vec<String> {
+    text.lines()
+        .next()
+        .unwrap()
+        .split(";")
+        .skip(2)
+        .map(|s| s.to_string())
+        .collect()
+}
+
+fn get_features(text: &String) -> Vec<Feature> {
+    text.lines()
+        .skip(1)
+        .map(|l| l.split(";").map(|s| s.to_string()))
+        .enumerate()
+        .map(|mut r| Feature {
+            lng: r.1.next().unwrap().parse::<f32>().unwrap(),
+            lat: r.1.next().unwrap().parse::<f32>().unwrap(),
+            attributes: Vec::from_iter(r.1),
+        })
+        .collect()
+}
+
+fn get_points(text: &String) -> Vec<Point> {
+    text.lines()
+        .skip(1)
+        .map(|l| l.split(";").map(|s| s.to_string()))
+        .enumerate()
+        .map(|mut r| Point { 
+            lng: r.1.next().unwrap().parse::<f32>().unwrap(),
+            lat: r.1.next().unwrap().parse::<f32>().unwrap(),
+        })
+        .collect()
+}
+
+fn save_layer(window: &Window, uuid: String, table: Table) {
+    window.app_handle()
+        .try_state::<Storage>()
+        .expect("oh noes!")
+        .store
+        .lock()
+        .expect("woe is me!")
+        .insert(uuid, table);
+}
 fn load_file(window: Window) {
     dialog::FileDialogBuilder::default()
         .add_filter("csv", &["csv"])
@@ -114,33 +208,11 @@ fn load_file(window: Window) {
                 let contents = fs::read_to_string(x_copy).expect("srsly now");
 
                 let uuid = Uuid::new_v4();
-
-                let columns: Vec<String> = contents.lines()
-                    .next()
-                    .unwrap()
-                    .split(";")
-                    .skip(2)
-                    .map(|s| s.to_string())
-                    .collect();
-
-                let features: Vec<Feature> = contents.lines()
-                    .skip(1)
-                    .map(|l| l.split(";").map(|s| s.to_string()))
-                    .enumerate()
-                    .map(|mut r| Feature { 
-                        lng: r.1.next().unwrap().parse::<f32>().unwrap(),
-                        lat: r.1.next().unwrap().parse::<f32>().unwrap(),
-                        attributes: Vec::from_iter(r.1),
-                    })
-                    .collect();
-
-                window.app_handle()
-                    .try_state::<Storage>()
-                    .expect("oh noes!")
-                    .store
-                    .lock()
-                    .expect("woe is me!")
-                    .insert(uuid.to_string(), Table { columns, rows: features.clone() });
+                let columns = get_columns(&contents);
+                let features = get_features(&contents);
+                let points = get_points(&contents);
+                let table = Table { columns, rows: features.clone() };
+                save_layer(&window, uuid.to_string(), table);
 
                 let _ = window.emit(
                     "create_layer",
@@ -148,6 +220,7 @@ fn load_file(window: Window) {
                         uuid: uuid.to_string(),
                         filename: filename.to_string(),
                         features,
+                        extent: Extent::from_iter(points),
                     }
                 );
             }

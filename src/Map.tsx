@@ -1,6 +1,7 @@
 import React from "react";
 
 import "ol/ol.css";
+import { fromLonLat, toLonLat } from "ol/proj";
 import Map from "ol/Map";
 import View from "ol/View";
 import OSM from "ol/source/OSM";
@@ -13,7 +14,6 @@ import Style from "ol/style/Style";
 import Stroke from "ol/style/Stroke";
 import Fill from "ol/style/Fill";
 import Circle from "ol/style/Circle";
-import { fromLonLat } from "ol/proj";
 import { Layer, Feature as _Feature, Point as _Point } from "./Layers";
 
 type Layers = {
@@ -21,8 +21,17 @@ type Layers = {
     layers: Layer[];
 };
 
+export type Extent = {
+    west: number;
+    south: number;
+    east: number;
+    north: number;
+};
+
 type Props = {
     layers: Layers;
+    extent: Extent | null;
+    onChangeExtent: (extent: Extent) => void;
     onHighlight: (layerId: string, featureId: number) => void;
     onStopHighlight: () => void;
 };
@@ -57,11 +66,13 @@ const makeLayer = (file: Layer) =>
 
 const _Map = (props: Props) => {
     const layerRef = React.useRef<VectorSource<Point>>(new VectorSource());
+    const mapRef = React.useRef<Map>();
+
     React.useEffect(() => {
         layerRef.current.clear();
         layerRef.current.addFeatures(
             props.layers.layers
-                .filter((l) => l.visible)
+                .filter(l => l.visible)
                 .reverse()
                 .flatMap(makeLayer)
         );
@@ -82,14 +93,58 @@ const _Map = (props: Props) => {
             view: new View({ center: [0, 0], zoom: 2 }),
         });
 
-        map.on("pointermove", (e) => {
+        map.on("pointermove", e => {
             props.onStopHighlight();
-            map.forEachFeatureAtPixel(e.pixel, (f) => {
+            map.forEachFeatureAtPixel(e.pixel, f => {
                 const { layerId, featureId } = f.getProperties();
                 props.onHighlight(layerId, featureId);
             });
         });
+
+        map.on("moveend", () => {
+            const [xmin, ymin, xmax, ymax] = map
+                .getView()
+                .calculateExtent(map.getSize());
+            const [lngmin, latmin] = toLonLat([xmin, ymin]);
+            const [lngmax, latmax] = toLonLat([xmax, ymax]);
+            props.onChangeExtent({
+                west: lngmin,
+                south: latmin,
+                east: lngmax,
+                north: latmax,
+            });
+        });
+
+        mapRef.current = map;
     }, []);
+
+    React.useEffect(
+        () => {
+            const map = mapRef.current;
+
+            if (!map || !props.extent) {
+                return;
+            }
+
+            const { west, south, east, north } = props.extent;
+            const [xmin, ymin] = fromLonLat([west, south]);
+            const [xmax, ymax] = fromLonLat([east, north]);
+
+            if (xmin > xmax) {
+                return;
+            }
+
+            map.getView().fit([xmin, ymin, xmax, ymax]);
+        },
+        props.extent
+            ? [
+                  props.extent.west,
+                  props.extent.south,
+                  props.extent.east,
+                  props.extent.north,
+              ]
+            : [null, null, null, null]
+    );
 
     return (
         <div
