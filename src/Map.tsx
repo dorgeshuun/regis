@@ -94,17 +94,17 @@ const _Map = (props: Props) => {
         });
 
         map.on("click", e => {
-            let n = 0;
+            let found = false;
 
             map.forEachFeatureAtPixel(e.pixel, f => {
-                if (n === 0) {
+                if (!found) {
                     const { layerId, featureId } = f.getProperties();
                     props.onHighlight(layerId, featureId);
                 }
-                n += 1;
+                found = true;
             });
 
-            if (n === 0) {
+            if (!found) {
                 props.onStopHighlight();
             }
         });
