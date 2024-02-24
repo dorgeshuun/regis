@@ -93,12 +93,20 @@ const _Map = (props: Props) => {
             view: new View({ center: [0, 0], zoom: 2 }),
         });
 
-        map.on("pointermove", e => {
-            props.onStopHighlight();
+        map.on("click", e => {
+            let n = 0;
+
             map.forEachFeatureAtPixel(e.pixel, f => {
-                const { layerId, featureId } = f.getProperties();
-                props.onHighlight(layerId, featureId);
+                if (n === 0) {
+                    const { layerId, featureId } = f.getProperties();
+                    props.onHighlight(layerId, featureId);
+                }
+                n += 1;
             });
+
+            if (n === 0) {
+                props.onStopHighlight();
+            }
         });
 
         map.on("moveend", () => {
