@@ -1,17 +1,14 @@
-import React from "react";
 import { useQuery } from "@tanstack/react-query";
-
 import { invoke } from "@tauri-apps/api";
+import Paper from "@mui/material/Paper";
+import Table from "@mui/material/Table";
+import TableContainer from "@mui/material/TableContainer";
+import TableBody from "@mui/material/TableBody";
+import TableRow from "@mui/material/TableRow";
+import TableCell from "@mui/material/TableCell";
 
-type Props = {
-    layerId: string;
-    featureId: number;
-};
-
-type Field = {
-    name: string;
-    value: string;
-};
+type Props = { layerId: string; featureId: number };
+type Field = { name: string; value: string };
 
 function FeatureAttributes(props: Props) {
     const query = useQuery({
@@ -23,7 +20,7 @@ function FeatureAttributes(props: Props) {
     });
 
     if (query.isPending) {
-        return <div>pending...</div>;
+        return null;
     }
 
     if (query.isError) {
@@ -31,13 +28,18 @@ function FeatureAttributes(props: Props) {
     }
 
     return (
-        <ul style={{ margin: 25 }}>
-            {query.data.map((f, index) => (
-                <li key={index}>
-                    {f.name} {f.value}
-                </li>
-            ))}
-        </ul>
+        <TableContainer component={Paper}>
+            <Table size="small">
+                <TableBody>
+                    {query.data.map((f, index) => (
+                        <TableRow key={index}>
+                            <TableCell align="right">{f.name}</TableCell>
+                            <TableCell align="left">{f.value}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
     );
 }
 
