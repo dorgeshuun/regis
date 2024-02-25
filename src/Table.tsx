@@ -10,6 +10,7 @@ import TableCell from "@mui/material/TableCell";
 import TableSortLabel from "@mui/material/TableSortLabel";
 
 import { invoke } from "@tauri-apps/api";
+import useWindowHeight from "./useWindowHeight";
 
 type Row = {
     values: string[];
@@ -29,6 +30,8 @@ const _Table = () => {
     const { uuid } = useParams();
 
     const [data, setData] = React.useState<State>({ fetched: false });
+
+    const height = useWindowHeight();
 
     React.useEffect(() => {
         invoke("get_layer_attributes", { layerId: uuid }).then(result => {
@@ -67,6 +70,20 @@ const _Table = () => {
             return { ...state, sortIndex: index, sortDirection: "asc" };
         });
     };
+
+    return (
+        <div
+            style={{
+                width: "100vw",
+                height: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+            }}
+        >
+            {height}
+        </div>
+    );
 
     return (
         <Table size="small">
