@@ -11,6 +11,7 @@ import TableSortLabel from "@mui/material/TableSortLabel";
 
 import { invoke } from "@tauri-apps/api";
 import useWindowHeight from "./useWindowHeight";
+import "./styles.css";
 
 type Row = {
     values: string[];
@@ -27,11 +28,14 @@ type LayerState = {
 type State = { fetched: false } | ({ fetched: true } & LayerState);
 
 const _Table = () => {
+    const ref = React.useRef<HTMLDivElement>(null);
+
     const { uuid } = useParams();
 
     const [data, setData] = React.useState<State>({ fetched: false });
 
     const height = useWindowHeight();
+    const [scrollTop, setScrollTop] = React.useState(0);
 
     React.useEffect(() => {
         invoke("get_layer_attributes", { layerId: uuid }).then(result => {
@@ -48,6 +52,26 @@ const _Table = () => {
             });
         });
     }, []);
+
+    const handleScroll = () => {
+        const element = ref.current;
+
+        if (!element) {
+            throw new Error();
+        }
+
+        setScrollTop(window.scrollY);
+    };
+
+    const first = Math.floor(scrollTop / 20);
+    const length = Math.ceil(height / 20);
+
+    React.useEffect(() => {
+        document.addEventListener("scroll", handleScroll);
+        return () => {
+            document.removeEventListener("scroll", handleScroll);
+        };
+    }, [height]);
 
     if (!data.fetched) {
         return <div>no data yet</div>;
@@ -73,6 +97,58 @@ const _Table = () => {
 
     return (
         <div
+            ref={ref}
+            style={{
+                height: "calc(20px * 100000)",
+                background: "lightgreen",
+            }}
+        >
+            <div
+                style={{
+                    top: scrollTop,
+                    position: "relative",
+                    maxHeight: "100vh",
+                    overflowY: "clip",
+                }}
+            >
+                {Array(length)
+                    .fill(0)
+                    .map((_, index) => first + index)
+                    .map((n, index) => (
+                        <div key={index} style={{ height: 20 }}>
+                            hello world {n}
+                        </div>
+                    ))}
+            </div>
+        </div>
+    );
+
+    return (
+        <table style={{ width: "100vw" }}>
+            <thead>
+                <tr style={{ height: 50 }}>
+                    <th>company</th>
+                    <th>contact</th>
+                    <th>country</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style={{ height: 30 }}>
+                    <td>Alfreds Futterkiste</td>
+                    <td>Maria Anders</td>
+                    <td>Germany</td>
+                </tr>
+                <tr style={{ height: 30 }}>
+                    <td>Centro comercial Moctezuma</td>
+                    <td>Francisco Chang</td>
+                    <td>Mexico</td>
+                </tr>
+            </tbody>
+        </table>
+    );
+
+    return (
+        <div
             style={{
                 width: "100vw",
                 height: "100vh",
@@ -81,7 +157,7 @@ const _Table = () => {
                 justifyContent: "center",
             }}
         >
-            {height}
+            {head}
         </div>
     );
 
