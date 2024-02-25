@@ -13,7 +13,6 @@ export type Attribute = {
 export type Feature = {
     geom: Point;
     attributes: Attribute[];
-    selected: boolean;
 };
 
 export type Layer = {
