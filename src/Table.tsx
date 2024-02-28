@@ -15,15 +15,6 @@ import { TableVirtuoso, TableComponents } from "react-virtuoso";
 import useWindowDimensions from "./useWindowDimensions";
 import "./styles.css";
 
-type LayerState = {
-    columns: string[];
-    rows: string[][];
-    sortIndex: number;
-    sortDirection: "asc" | "desc";
-};
-
-type State = { fetched: false } | ({ fetched: true } & LayerState);
-
 type Sort = { col: number; dir: "asc" | "desc" };
 
 const VirtuosoTableComponents: TableComponents<string[]> = {
@@ -42,6 +33,8 @@ const _Table = () => {
     const { uuid } = useParams();
     const { height } = useWindowDimensions();
 
+    const [sort, setSort] = React.useState<Sort>({ col: 0, dir: "asc" });
+
     const query = useQuery({
         queryKey: [`features-${uuid}`],
         queryFn: async () => {
@@ -52,8 +45,6 @@ const _Table = () => {
             return { columns, rows };
         },
     });
-
-    const [sort, setSort] = React.useState<Sort>({ col: 0, dir: "asc" });
 
     if (query.isPending) {
         return "loading...";
@@ -97,12 +88,7 @@ const _Table = () => {
         return (
             <React.Fragment>
                 {row.map((display, index) => (
-                    <TableCell
-                        key={index}
-                        //align={column.numeric || false ? 'right' : 'left'}
-                    >
-                        {display}
-                    </TableCell>
+                    <TableCell key={index}>{display}</TableCell>
                 ))}
             </React.Fragment>
         );
