@@ -64,17 +64,10 @@ const _Table = () => {
     }
 
     const handleClickSort = (index: number) => () => {
-        setSort(state => {
-            if (index === state.col && state.dir === "asc") {
-                return { col: index, dir: "desc" };
-            }
-
-            if (index === state.col && state.dir === "desc") {
-                return { col: index, dir: "asc" };
-            }
-
-            return { col: index, dir: "asc" };
-        });
+        setSort(state => ({
+            col: index,
+            dir: index === state.col && state.dir === "asc" ? "desc" : "asc",
+        }));
     };
 
     const fixedHeaderContent = () => {
