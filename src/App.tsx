@@ -41,7 +41,7 @@ function App() {
                 ],
             }));
 
-            setMapExtent(extent);
+            //setMapExtent(extent);
         });
     }, []);
 

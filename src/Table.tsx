@@ -10,7 +10,7 @@ import TableCell from "@mui/material/TableCell";
 import TableSortLabel from "@mui/material/TableSortLabel";
 import { TableVirtuoso, TableComponents } from "react-virtuoso";
 
-import useWindowHeight from "./useWindowHeight";
+import useWindowDimensions from "./useWindowDimensions";
 import "./styles.css";
 import TableContainer from "@mui/material/TableContainer";
 
@@ -43,7 +43,7 @@ const VirtuosoTableComponents: TableComponents<Row> = {
 const _Table = () => {
     const { uuid } = useParams();
     const [data, setData] = React.useState<State>({ fetched: false });
-    const height = useWindowHeight();
+    const { height } = useWindowDimensions();
 
     React.useEffect(() => {
         invoke("get_layer_attributes", { layerId: uuid }).then(result => {
