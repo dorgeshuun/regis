@@ -1,34 +1,32 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api";
+import { useQuery } from "@tanstack/react-query";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableHead from "@mui/material/TableHead";
 import TableBody from "@mui/material/TableBody";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
 import TableSortLabel from "@mui/material/TableSortLabel";
 import { TableVirtuoso, TableComponents } from "react-virtuoso";
 
 import useWindowDimensions from "./useWindowDimensions";
 import "./styles.css";
-import TableContainer from "@mui/material/TableContainer";
-
-type Row = {
-    values: string[];
-    selected: boolean;
-};
 
 type LayerState = {
     columns: string[];
-    rows: Row[];
+    rows: string[][];
     sortIndex: number;
     sortDirection: "asc" | "desc";
 };
 
 type State = { fetched: false } | ({ fetched: true } & LayerState);
 
-const VirtuosoTableComponents: TableComponents<Row> = {
+type Sort = { col: number; dir: "asc" | "desc" };
+
+const VirtuosoTableComponents: TableComponents<string[]> = {
     Scroller: React.forwardRef<HTMLDivElement>((props, ref) => (
         <TableContainer component={Paper} {...props} ref={ref} />
     )),
@@ -42,69 +40,70 @@ const VirtuosoTableComponents: TableComponents<Row> = {
 
 const _Table = () => {
     const { uuid } = useParams();
-    const [data, setData] = React.useState<State>({ fetched: false });
     const { height } = useWindowDimensions();
 
-    React.useEffect(() => {
-        invoke("get_layer_attributes", { layerId: uuid }).then(result => {
-            const [head, ...tail] = result as string[][];
-            const rows = tail.map(r => ({ values: r, selected: false }));
-            setData({
-                fetched: true,
-                columns: head,
-                rows,
-                sortIndex: 0,
-                sortDirection: "asc",
+    const query = useQuery({
+        queryKey: [`features-${uuid}`],
+        queryFn: async () => {
+            const result = await invoke("get_layer_attributes", {
+                layerId: uuid,
             });
-        });
-    }, []);
+            const [columns, ...rows] = result as string[][];
+            return { columns, rows };
+        },
+    });
 
-    if (!data.fetched) {
-        return <div>no data yet</div>;
+    const [sort, setSort] = React.useState<Sort>({ col: 0, dir: "asc" });
+
+    if (query.isPending) {
+        return "loading...";
+    }
+
+    if (query.isError) {
+        return "failed on fetch";
     }
 
     const handleClickSort = (index: number) => () => {
-        setData(state => {
-            if (!state.fetched) {
-                return state;
+        setSort(state => {
+            if (index === state.col && state.dir === "asc") {
+                return { col: index, dir: "desc" };
             }
 
-            if (index === state.sortIndex && state.sortDirection === "asc") {
-                return { ...state, sortDirection: "desc" };
+            if (index === state.col && state.dir === "desc") {
+                return { col: index, dir: "asc" };
             }
 
-            if (index === state.sortIndex && state.sortDirection === "desc") {
-                return { ...state, sortDirection: "asc" };
-            }
-
-            return { ...state, sortIndex: index, sortDirection: "asc" };
+            return { col: index, dir: "asc" };
         });
     };
 
     const fixedHeaderContent = () => {
         return (
             <TableRow>
-                {data.columns.map(title => (
+                {query.data.columns.map((title, index) => (
                     <TableCell
                         key={title}
                         variant="head"
-                        //align={c.numeric || false ? "right" : "left"}
                         style={{ width: 200 }}
-                        sx={{
-                            backgroundColor: "background.paper",
-                        }}
+                        sx={{ backgroundColor: "background.paper" }}
                     >
-                        {title}
+                        <TableSortLabel
+                            active={index === sort.col}
+                            direction={sort.dir}
+                            onClick={handleClickSort(index)}
+                        >
+                            {title}
+                        </TableSortLabel>
                     </TableCell>
                 ))}
             </TableRow>
         );
     };
 
-    const rowContent = (_index: number, row: Row) => {
+    const rowContent = (_index: number, row: string[]) => {
         return (
             <React.Fragment>
-                {row.values.map((display, index) => (
+                {row.map((display, index) => (
                     <TableCell
                         key={index}
                         //align={column.numeric || false ? 'right' : 'left'}
@@ -119,7 +118,7 @@ const _Table = () => {
     return (
         <TableVirtuoso
             style={{ height }}
-            data={data.rows}
+            data={query.data.rows}
             components={VirtuosoTableComponents}
             fixedHeaderContent={fixedHeaderContent}
             itemContent={rowContent}
