@@ -10,11 +10,17 @@ import FeatureAttributes from "./FeatureAttributes";
 import { invoke } from "@tauri-apps/api";
 import { listen } from "@tauri-apps/api/event";
 
+type HighlightState =
+    | { active: false }
+    | { active: true; layerId: string; featureId: number };
+
+type Point = { lng: number; lat: number };
+
 function App() {
     const [files, setFiles] = React.useState<Layers>({ id: 0, layers: [] });
-    const [highlighted, setHighlighted] = React.useState<
-        { active: false } | { active: true; layerId: string; featureId: number }
-    >({ active: false });
+    const [highlighted, setHighlighted] = React.useState<HighlightState>({
+        active: false,
+    });
     const [mapExtent, setMapExtent] = React.useState<Extent | null>(null);
 
     React.useEffect(() => {
@@ -22,7 +28,7 @@ function App() {
             const { uuid, filename, features, extent } = e.payload as {
                 uuid: string;
                 filename: string;
-                features: { lng: number; lat: number }[];
+                features: Point[];
                 extent: Extent;
             };
 
@@ -40,8 +46,6 @@ function App() {
                     },
                 ],
             }));
-
-            //setMapExtent(extent);
         });
     }, []);
 
