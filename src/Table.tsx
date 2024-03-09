@@ -36,10 +36,12 @@ const _Table = () => {
     const [sort, setSort] = React.useState<Sort>({ col: 0, dir: "asc" });
 
     const query = useQuery({
-        queryKey: [`features-${uuid}`],
+        queryKey: [`features-${uuid}-${sort.col}-${sort.dir}`],
         queryFn: async () => {
             const result = await invoke("get_layer_attributes", {
                 layerId: uuid,
+                sortCol: sort.col,
+                sortDir: sort.dir,
             });
             const [columns, ...rows] = result as string[][];
             return { columns, rows };

@@ -130,7 +130,7 @@ async fn create_table_window(app_handle: tauri::AppHandle, layer_id: String) {
 }
 
 #[tauri::command]
-async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String) -> Vec<Vec<String>> {
+async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String, sort_col: usize, sort_dir: String) -> Vec<Vec<String>> {
     let layer = app_handle.try_state::<Storage>()
         .unwrap()
         .store
@@ -145,7 +145,14 @@ async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String) ->
         .map(|x| x.attributes);
 
     let head = layer.columns;
-    let tail = Vec::from_iter(attributes);
+    let mut tail = Vec::from_iter(attributes);
+    tail.sort_unstable_by(|a, b| a[sort_col].cmp(&b[sort_col]));
+
+    match sort_dir.as_str() {
+        "asc" => None,
+        "desc" => Some(tail.reverse()),
+        _ => panic!("crash and burn"),
+    };
 
     let mut result = vec![head];
     result.extend(tail);
