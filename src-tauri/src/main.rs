@@ -18,7 +18,6 @@ use uuid::Uuid;
 
 #[derive(Clone, serde::Serialize)]
 struct Feature {
-    //id: usize,
     lng: f32,
     lat: f32,
     attributes: Vec<String>,
@@ -33,7 +32,7 @@ struct FilePayload {
 
 #[derive(Clone, serde::Serialize)]
 struct Table {
-    columns: Vec<String>,
+    columns: Vec<Column>,
     rows: Vec<Feature>,
 }
 
@@ -41,6 +40,12 @@ struct Table {
 struct Field {
     name: String,
     value: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct Column {
+    title: String,
+    numeric: bool,
 }
 
 #[derive(Serialize)]
@@ -144,9 +149,14 @@ async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String, so
         .into_iter()
         .map(|x| x.attributes);
 
-    let head = layer.columns;
+    let head = layer.columns.clone().into_iter().map(|c| c.title).collect();
     let mut tail = Vec::from_iter(attributes);
-    tail.sort_unstable_by(|a, b| a[sort_col].cmp(&b[sort_col]));
+
+    if layer.columns[sort_col].numeric {
+        tail.sort_unstable_by(|a, b| a[sort_col].parse::<u32>().unwrap().cmp(&b[sort_col].parse::<u32>().unwrap()));
+    } else {
+        tail.sort_unstable_by(|a, b| a[sort_col].cmp(&b[sort_col]));
+    }
 
     match sort_dir.as_str() {
         "asc" => None,
@@ -160,14 +170,32 @@ async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String, so
     return result;
 }
 
-fn get_columns(text: &String) -> Vec<String> {
-    text.lines()
+fn get_columns(text: &String) -> Vec<Column> {
+    let initial: Vec<Column> = text.lines()
         .next()
-        .unwrap()
+        .expect("file should contain at least a header")
         .split(";")
         .skip(2)
-        .map(|s| s.to_string())
-        .collect()
+        .map(|s| Column { title: s.to_string(), numeric: true })
+        .collect();
+
+    text.lines()
+        .skip(1)
+        .map(|s| s.split(";")
+            .skip(2)
+            .map(|s| s.to_string())
+            .map(|s| s.parse::<u32>())
+            .map(|result| result.is_ok())
+        )
+        .fold(
+            initial, 
+            |x, y| y.enumerate()
+                .map(|(i, val)| Column { 
+                    title: x[i].title.clone(), 
+                    numeric: if x[i].numeric { val } else { false }
+                })
+                .collect()
+        )
 }
 
 fn get_features(text: &String) -> Vec<Feature> {
@@ -261,7 +289,7 @@ fn get_feature_attributes(app_handle: tauri::AppHandle, layer_id: String, featur
     return columns.iter()
         .zip(attributes.iter())
         .map(|x| Field{ 
-            name: x.0.to_string(), 
+            name: x.0.title.to_string(), 
             value: x.1.to_string() 
         })
         .collect();
