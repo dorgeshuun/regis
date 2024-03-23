@@ -214,12 +214,13 @@ fn get_features(text: &String) -> Vec<Feature> {
 fn get_points(text: &String) -> Vec<Point> {
     text.lines()
         .skip(1)
-        .map(|l| l.split(";").map(|s| s.to_string()))
-        .enumerate()
-        .map(|mut r| Point { 
-            lng: r.1.next().unwrap().parse::<f32>().unwrap(),
-            lat: r.1.next().unwrap().parse::<f32>().unwrap(),
-        })
+        .map(|l| l.split(";")
+            .into_iter()
+            .take(2)
+            .map(|x| x.parse::<f32>().expect("cannot parse value into float"))
+            .collect::<Vec<f32>>()
+        )
+        .map(|l| Point{ lng: l[0], lat: l[1] })
         .collect()
 }
 
