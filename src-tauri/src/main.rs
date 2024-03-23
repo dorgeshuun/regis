@@ -4,6 +4,7 @@
 use std::fs;
 use std::sync::Mutex;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use serde::Serialize;
 
@@ -124,14 +125,13 @@ struct InitialPayload {
 
 #[tauri::command]
 async fn create_table_window(app_handle: tauri::AppHandle, layer_id: String) {
-    let mut url = "/table/".to_string();
-    url.push_str(&layer_id);
-
-    tauri::WindowBuilder::new(
-        &app_handle,
-        layer_id,
-        tauri::WindowUrl::App(url.parse().unwrap())
-    ).build().unwrap();
+    let mut path = PathBuf::new();
+    path.push("/table/");
+    path.push(&layer_id);
+    let url = tauri::WindowUrl::App(path);
+    tauri::WindowBuilder::new(&app_handle, layer_id, url)
+        .build()
+        .expect("could not build window");
 }
 
 #[tauri::command]
