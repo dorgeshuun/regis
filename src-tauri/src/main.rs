@@ -13,63 +13,9 @@ use tauri::Menu;
 use tauri::Submenu;
 use tauri::Window;
 use tauri::Manager;
-use tauri::api::dialog;
+use tauri::api::dialog::FileDialogBuilder;
 
 use uuid::Uuid;
-
-#[derive(Clone, serde::Serialize)]
-struct Feature {
-    lng: f32,
-    lat: f32,
-    attributes: Vec<String>,
-}
-
-#[derive(Clone, serde::Serialize)]
-struct FilePayload {
-    uuid: String,
-    filename: String,
-    features: Vec<Feature>,
-}
-
-#[derive(Clone, serde::Serialize)]
-struct Table {
-    columns: Vec<Column>,
-    rows: Vec<Feature>,
-}
-
-#[derive(Clone, serde::Serialize)]
-struct Field {
-    name: String,
-    value: String,
-}
-
-#[derive(Clone, serde::Serialize)]
-struct Column {
-    title: String,
-    numeric: bool,
-}
-
-#[derive(Serialize)]
-pub(crate) struct LayerState {
-    layers: HashMap<String, Vec<Vec<String>>>
-}
-
-impl Default for LayerState {
-    fn default() -> Self {
-        Self {
-            layers: HashMap::new(),
-        }
-    }
-}
-
-struct Storage {
-    store: Mutex<HashMap<String, Table>>,
-}
-
-struct Point {
-    lng: f32,
-    lat: f32,
-}
 
 #[derive(Clone, serde::Serialize)]
 struct Extent {
@@ -113,6 +59,65 @@ impl std::fmt::Display for Extent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} {} {} {}", self.west, self.south, self.east, self.north)
     }
+}
+
+#[derive(Clone, serde::Serialize)]
+struct Feature {
+    lng: f32,
+    lat: f32,
+    attributes: Vec<String>,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct Layer {
+    uuid: String,
+    filename: String,
+    features: Vec<Feature>,
+}
+
+#[derive(Serialize)]
+pub(crate) struct LayerCollection {
+    layers: HashMap<String, Layer>
+}
+
+#[derive(Serialize)]
+pub(crate) struct LayerState {
+    layers: HashMap<String, Vec<Vec<String>>>
+}
+
+impl Default for LayerState {
+    fn default() -> Self {
+        Self {
+            layers: HashMap::new(),
+        }
+    }
+}
+
+struct Storage {
+    store: Mutex<HashMap<String, Table>>,
+}
+
+struct Point {
+    lng: f32,
+    lat: f32,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct Field {
+    name: String,
+    value: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct Column {
+    title: String,
+    numeric: bool,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct Table {
+    columns: Vec<Column>,
+    rows: Vec<Feature>,
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -198,19 +203,6 @@ fn get_columns(text: &String) -> Vec<Column> {
         )
 }
 
-fn get_features(text: &String) -> Vec<Feature> {
-    text.lines()
-        .skip(1)
-        .map(|l| l.split(";").map(|s| s.to_string()))
-        .enumerate()
-        .map(|mut r| Feature {
-            lng: r.1.next().unwrap().parse::<f32>().unwrap(),
-            lat: r.1.next().unwrap().parse::<f32>().unwrap(),
-            attributes: Vec::from_iter(r.1),
-        })
-        .collect()
-}
-
 fn get_points(text: &String) -> Vec<Point> {
     text.lines()
         .skip(1)
@@ -233,10 +225,32 @@ fn save_layer(window: &Window, uuid: String, table: Table) {
         .expect("woe is me!")
         .insert(uuid, table);
 }
+
+fn get_features(text: &String) -> Vec<Feature> {
+    text.lines()
+        .skip(1)
+        .map(|l| {
+            let result = l.split(";").collect::<Vec<_>>();
+            let lng = result[0]
+                .parse::<f32>()
+                .expect("could not parse to float");
+            let lat = result[1]
+                .parse::<f32>()
+                .expect("could not parse to float");
+            let attributes = result[2..]
+                .iter()
+                .map(|x| String::from(*x))
+                .collect();
+            Feature { lng, lat, attributes }
+        })
+        .collect()
+}
+
 fn load_file(window: Window) {
-    dialog::FileDialogBuilder::default()
+    FileDialogBuilder::default()
         .add_filter("csv", &["csv"])
         .pick_file(move |filepath| match filepath {
+            None => {},
             Some(x) => {
                 let x_copy = x.clone();
                 let filepath = x.to_str().expect("this be string right?");
@@ -260,8 +274,7 @@ fn load_file(window: Window) {
                     }
                 );
             }
-            None => println!("oh no!")
-        })          
+        })       
 }
 
 #[tauri::command]
