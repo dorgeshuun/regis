@@ -134,9 +134,11 @@ async fn create_table_window(app_handle: tauri::AppHandle, layer_id: String) {
     path.push("/table/");
     path.push(&layer_id);
     let url = tauri::WindowUrl::App(path);
-    tauri::WindowBuilder::new(&app_handle, layer_id, url)
+    let _ = tauri::WindowBuilder::new(&app_handle, layer_id, url)
         .build()
-        .expect("could not build window");
+        .expect("could not build window")
+        .menu_handle()
+        .hide();
 }
 
 #[tauri::command]
