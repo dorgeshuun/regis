@@ -252,27 +252,24 @@ fn load_file(window: Window) {
         .pick_file(move |filepath| match filepath {
             None => {},
             Some(x) => {
-                let x_copy = x.clone();
-                let filepath = x.to_str().expect("this be string right?");
-                let filename = filepath.split("/").last().expect("omg just split");
-                let contents = fs::read_to_string(x_copy).expect("srsly now");
+                let contents = fs::read_to_string(x.clone()).expect("srsly now");
+                let filename = x.to_str()
+                    .expect("this be string right?")
+                    .split("/")
+                    .last()
+                    .expect("omg just split")
+                    .to_string();
 
-                let uuid = Uuid::new_v4();
+                let uuid = Uuid::new_v4().to_string();
                 let columns = get_columns(&contents);
                 let features = get_features(&contents);
                 let points = get_points(&contents);
                 let table = Table { columns, rows: features.clone() };
-                save_layer(&window, uuid.to_string(), table);
+                save_layer(&window, uuid.clone(), table);
 
-                let _ = window.emit(
-                    "create_layer",
-                    InitialPayload {
-                        uuid: uuid.to_string(),
-                        filename: filename.to_string(),
-                        features,
-                        extent: Extent::from_iter(points),
-                    }
-                );
+                let extent = Extent::from_iter(points);
+                let payload = InitialPayload { uuid, filename, features, extent };
+                let _ = window.emit("create_layer", payload);
             }
         })       
 }
