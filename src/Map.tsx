@@ -33,7 +33,6 @@ type Props = {
     extent: Extent | null;
     onChangeExtent: (extent: Extent) => void;
     onHighlight: (layerId: string, featureId: number) => void;
-    onStopHighlight: () => void;
 };
 
 const makeStyle = (color: string) =>
@@ -103,10 +102,6 @@ const _Map = (props: Props) => {
                 }
                 found = true;
             });
-
-            if (!found) {
-                props.onStopHighlight();
-            }
         });
 
         map.on("moveend", () => {

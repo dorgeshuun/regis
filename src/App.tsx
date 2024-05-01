@@ -4,23 +4,16 @@ import "./App.css";
 import { Layer, Layers } from "./Layers";
 import SidePanel from "./SidePanel";
 import Map, { Extent } from "./Map";
-import Popup from "./Popup";
-import FeatureAttributes from "./FeatureAttributes";
 
 import { invoke } from "@tauri-apps/api";
 import { listen } from "@tauri-apps/api/event";
-
-type HighlightState =
-    | { active: false }
-    | { active: true; layerId: string; featureId: number };
+import { message } from "@tauri-apps/api/dialog";
 
 type Point = { lng: number; lat: number };
+type Field = { name: string; value: string };
 
 function App() {
     const [files, setFiles] = React.useState<Layers>({ id: 0, layers: [] });
-    const [highlighted, setHighlighted] = React.useState<HighlightState>({
-        active: false,
-    });
     const [mapExtent, setMapExtent] = React.useState<Extent | null>(null);
 
     React.useEffect(() => {
@@ -102,12 +95,18 @@ function App() {
         setMapExtent(extent);
     };
 
-    const handleFeatureHighlight = (layerId: string, featureId: number) => {
-        setHighlighted({ active: true, layerId, featureId });
-    };
-
-    const handleStopHighlight = () => {
-        setHighlighted({ active: false });
+    const handleFeatureHighlight = async (
+        layerId: string,
+        featureId: number
+    ) => {
+        const resp: Field[] = await invoke("get_feature_attributes", {
+            layerId,
+            featureId,
+        });
+        const text = resp
+            .map(x => `${x.name} ${x.value}`)
+            .reduce((x, y) => x + y + "\n", "");
+        await message(text, { title: "identify", type: "info" });
     };
 
     return (
@@ -126,18 +125,7 @@ function App() {
                 extent={mapExtent}
                 onChangeExtent={handleChangeMapExtent}
                 onHighlight={handleFeatureHighlight}
-                onStopHighlight={handleStopHighlight}
             />
-            <Popup open={highlighted.active}>
-                {highlighted.active ? (
-                    <FeatureAttributes
-                        layerId={highlighted.layerId}
-                        featureId={highlighted.featureId}
-                    />
-                ) : (
-                    <span>nothing here</span>
-                )}
-            </Popup>
         </div>
     );
 }

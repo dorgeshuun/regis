@@ -289,6 +289,7 @@ fn delete_layer(app_handle: tauri::AppHandle, layer_id: String) {
 
 #[tauri::command]
 fn get_feature_attributes(app_handle: tauri::AppHandle, layer_id: String, feature_id: usize) -> Vec<Field> {
+    println!("{} {}", layer_id, feature_id);
     let state = app_handle.try_state::<Storage>().expect("oh noes!");
     let layers = state
         .store
