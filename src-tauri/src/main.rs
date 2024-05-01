@@ -152,15 +152,16 @@ async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String, so
         .unwrap()
         .clone();
 
-    let attributes = layer.rows
-        .into_iter()
-        .map(|x| x.attributes);
-
+    let attributes = layer.rows.into_iter().map(|x| x.attributes);
     let head = layer.columns.clone().into_iter().map(|c| c.title).collect();
     let mut tail = Vec::from_iter(attributes);
 
     if layer.columns[sort_col].numeric {
-        tail.sort_unstable_by(|a, b| a[sort_col].parse::<u32>().unwrap().cmp(&b[sort_col].parse::<u32>().unwrap()));
+        tail.sort_unstable_by(
+            |a, b| a[sort_col].parse::<u32>()
+                .unwrap()
+                .cmp(&b[sort_col].parse::<u32>().unwrap())
+        );
     } else {
         tail.sort_unstable_by(|a, b| a[sort_col].cmp(&b[sort_col]));
     }
