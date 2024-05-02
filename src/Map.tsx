@@ -15,6 +15,7 @@ import Stroke from "ol/style/Stroke";
 import Fill from "ol/style/Fill";
 import Circle from "ol/style/Circle";
 import { Layer, Feature as _Feature, Point as _Point } from "./Layers";
+import { listen } from "@tauri-apps/api/event";
 
 type Layers = {
     id: number;
@@ -148,6 +149,23 @@ const _Map = (props: Props) => {
               ]
             : [null, null, null, null]
     );
+
+    React.useEffect(() => {
+        listen(
+            "zoom_to_point",
+            ({ payload }: { payload: { lng: number; lat: number } }) => {
+                const map = mapRef.current;
+
+                if (!map) {
+                    throw new Error();
+                }
+
+                const [x, y] = fromLonLat([payload.lng, payload.lat]);
+                const view = new View({ center: [x, y], zoom: 15 });
+                map.setView(view);
+            }
+        );
+    }, []);
 
     return (
         <div

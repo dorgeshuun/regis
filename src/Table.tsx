@@ -17,18 +17,6 @@ import "./styles.css";
 
 type Sort = { col: number; dir: "asc" | "desc" };
 
-const VirtuosoTableComponents: TableComponents<string[]> = {
-    Scroller: React.forwardRef<HTMLDivElement>((props, ref) => (
-        <TableContainer component={Paper} {...props} ref={ref} />
-    )),
-    Table: props => <Table {...props} size="small" />,
-    TableHead,
-    TableRow: ({ item: _item, ...props }) => <TableRow {...props} hover />,
-    TableBody: React.forwardRef<HTMLTableSectionElement>((props, ref) => (
-        <TableBody {...props} ref={ref} />
-    )),
-};
-
 const _Table = () => {
     const { uuid } = useParams();
     const { height } = useWindowDimensions();
@@ -43,7 +31,12 @@ const _Table = () => {
                 sortCol: sort.col,
                 sortDir: sort.dir,
             });
-            const [columns, ...rows] = result as string[][];
+
+            const { headers: columns, body: rows } = result as {
+                headers: string[];
+                body: { index: number; values: string[] }[];
+            };
+
             return { columns, rows };
         },
     });
@@ -86,21 +79,50 @@ const _Table = () => {
         );
     };
 
-    const rowContent = (_index: number, row: string[]) => {
+    const rowContent = (
+        _index: number,
+        row: { index: number; values: string[] }
+    ) => {
         return (
             <React.Fragment>
-                {row.map((display, index) => (
+                {row.values.map((display, index) => (
                     <TableCell key={index}>{display}</TableCell>
                 ))}
             </React.Fragment>
         );
     };
 
+    const handleClickFeature = (index: number) => () => {
+        invoke("zoom_to_feature", { layerId: uuid, featureId: index });
+    };
+
+    const getTable = (): TableComponents<{
+        index: number;
+        values: string[];
+    }> => ({
+        Scroller: React.forwardRef<HTMLDivElement>((props, ref) => (
+            <TableContainer component={Paper} {...props} ref={ref} />
+        )),
+        Table: props => <Table {...props} size="small" />,
+        TableHead,
+        TableRow: ({ item: _item, ...props }) => (
+            <TableRow
+                {...props}
+                hover
+                style={{ cursor: "pointer" }}
+                onClick={handleClickFeature(_item.index)}
+            />
+        ),
+        TableBody: React.forwardRef<HTMLTableSectionElement>((props, ref) => (
+            <TableBody {...props} ref={ref} />
+        )),
+    });
+
     return (
         <TableVirtuoso
             style={{ height }}
             data={query.data.rows}
-            components={VirtuosoTableComponents}
+            components={getTable()}
             fixedHeaderContent={fixedHeaderContent}
             itemContent={rowContent}
         />

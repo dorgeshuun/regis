@@ -97,6 +97,7 @@ struct Storage {
     store: Mutex<HashMap<String, Table>>,
 }
 
+#[derive(Clone, serde::Serialize)]
 struct Point {
     lng: f32,
     lat: f32,
@@ -128,6 +129,18 @@ struct InitialPayload {
     extent: Extent,
 }
 
+#[derive(Clone, serde::Serialize)]
+struct Row {
+    index: usize,
+    values: Vec<String>,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct TablePayload {
+    headers: Vec<String>,
+    body: Vec<Row>,
+}
+
 #[tauri::command]
 async fn create_table_window(app_handle: tauri::AppHandle, layer_id: String) {
     let mut path = PathBuf::new();
@@ -142,7 +155,7 @@ async fn create_table_window(app_handle: tauri::AppHandle, layer_id: String) {
 }
 
 #[tauri::command]
-async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String, sort_col: usize, sort_dir: String) -> Vec<Vec<String>> {
+async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String, sort_col: usize, sort_dir: String) -> TablePayload {
     let layer = app_handle.try_state::<Storage>()
         .unwrap()
         .store
@@ -154,16 +167,21 @@ async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String, so
 
     let attributes = layer.rows.into_iter().map(|x| x.attributes);
     let head = layer.columns.clone().into_iter().map(|c| c.title).collect();
-    let mut tail = Vec::from_iter(attributes);
+
+    let mut tail: Vec<Row> = attributes.enumerate()
+        .map(|(index, values)| Row{ index, values })
+        .collect();
 
     if layer.columns[sort_col].numeric {
         tail.sort_unstable_by(
-            |a, b| a[sort_col].parse::<u32>()
+            |a, b| a.values[sort_col].parse::<u32>()
                 .unwrap()
-                .cmp(&b[sort_col].parse::<u32>().unwrap())
+                .cmp(&b.values[sort_col].parse::<u32>().unwrap())
         );
     } else {
-        tail.sort_unstable_by(|a, b| a[sort_col].cmp(&b[sort_col]));
+        tail.sort_unstable_by(
+            |a, b| a.values[sort_col].cmp(&b.values[sort_col])
+        );
     }
 
     match sort_dir.as_str() {
@@ -172,10 +190,7 @@ async fn get_layer_attributes(app_handle: tauri::AppHandle, layer_id: String, so
         _ => panic!("crash and burn"),
     };
 
-    let mut result = vec![head];
-    result.extend(tail);
-
-    return result;
+    TablePayload { headers: head, body: tail }
 }
 
 fn get_columns(text: &String) -> Vec<Column> {
@@ -309,6 +324,23 @@ fn get_feature_attributes(app_handle: tauri::AppHandle, layer_id: String, featur
         .collect();
 }
 
+#[tauri::command]
+fn zoom_to_feature(app_handle: tauri::AppHandle, layer_id: String, feature_id: usize) {
+    let feature: Feature = app_handle.try_state::<Storage>()
+        .expect("oh noes")
+        .store
+        .lock()
+        .expect("oh noes")
+        .get(&layer_id)
+        .expect("oh noes")
+        .rows[feature_id]
+        .clone();
+    let point = Point{ lng: feature.lng, lat: feature.lat };
+    let _ = app_handle.get_window("main")
+        .expect("oh noes")
+        .emit("zoom_to_point", point);
+}
+
 fn main() {
     let menu_item = CustomMenuItem::new("file_import".to_string(), "Import");
     let submenu = Submenu::new("Files", Menu::new().add_item(menu_item));
@@ -330,6 +362,7 @@ fn main() {
             get_layer_attributes,
             delete_layer,
             get_feature_attributes,
+            zoom_to_feature,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
