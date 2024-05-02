@@ -109,6 +109,21 @@ function App() {
         await message(text, { title: "identify", type: "info" });
     };
 
+    React.useEffect(() => {
+        listen(
+            "zoom_to_point",
+            ({ payload }: { payload: { lng: number; lat: number } }) => {
+                console.log(payload);
+                setMapExtent({
+                    west: payload.lng - 0.25,
+                    south: payload.lat - 0.25,
+                    east: payload.lng + 0.25,
+                    north: payload.lat + 0.25,
+                });
+            }
+        );
+    }, []);
+
     return (
         <div style={{ width: "100vw", height: "100vh", display: "flex" }}>
             <SidePanel
