@@ -1,0 +1,11 @@
+LNG;LAT;WIDTH;HEIGHT;LENGTH;TYPE;MATERIAL;CONDITION
+-100.10693;42.93282;11;18;29;ellipse_squashed;plastic_corrugated;urgent
+-103.03341;30.53322;18;19;60;round;plastic_corrugated;urgent
+-89.31135;42.95055;13;12;74;box;steel_corrugated;critical
+-114.96692;48.51135;11;9;43;arch;plastic_smooth;poor
+-81.99417;32.61288;6;10;71;drop_inlet;plastic_smooth;urgent
+-109.05463;35.47520;15;6;87;ellipse_squashed;steel_corrugated;excellent
+-111.76808;35.47407;17;9;29;drop_inlet;plastic_corrugated;critical
+-105.95994;36.82179;15;8;42;drop_inlet;plastic_corrugated;excellent
+-94.15236;44.76426;3;13;54;box;plastic_corrugated;fair
+-88.87524;35.22505;18;18;33;ellipse_squashed;concrete_poured;excellent
